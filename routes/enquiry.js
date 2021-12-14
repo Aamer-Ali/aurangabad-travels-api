@@ -4,13 +4,62 @@ const router = express.Router();
 
 router.post("/", async (req, res, next) => {
   try {
-    console.log(req.body);
-    res.send("DataTransfer success.");
-    console.log(req.body.travelingDate.toISOString());
-    // var d = new Date(req.body.travelingDate.toString());
-    // console.log(d.getDate()); //
-    // console.log(d.getMonth()); //
-    // console.log(d.getFullYear());
+    var response = { status: true, message: "" };
+    // console.log(req.body);
+
+    var rawTravelingDate = new Date(req.body.travelingDate);
+    travelingDate =
+      rawTravelingDate.getFullYear() +
+      "-" +
+      rawTravelingDate.getMonth() +
+      "-" +
+      rawTravelingDate.getDate();
+
+    var rawEnquiryDate = new Date(req.body.enquiryDate);
+    enquiryDate =
+      rawEnquiryDate.getFullYear() +
+      "-" +
+      rawEnquiryDate.getMonth() +
+      "-" +
+      rawEnquiryDate.getDate();
+    // let travelingDate = JSON.stringify(rawTravelingDate);
+    // travelingDate = travelingDate.slice(1, 11);
+
+    // var rawEnquiryDate = new Date(req.body.enquiryDate);
+    // let enquiryDate = JSON.stringify(rawEnquiryDate);
+    // enquiryDate = enquiryDate.slice(1, 11);
+
+    // console.log(travelingDate);
+    // console.log(enquiryDate);
+
+    connection.query(
+      "CALL SP_INSERT_ENQUIRY_DATA(?,?,?,?,?,?,?,?,?,?,@enquiryId) ; SELECT @enquiryId",
+      [
+        req.body.customerName,
+        req.body.email,
+        req.body.mobile,
+        req.body.address,
+        req.body.numberOfSeats,
+        req.body.modeOfTransport,
+        req.body.locationFrom.value,
+        req.body.locationTo.value,
+        travelingDate,
+        enquiryDate,
+      ],
+      function (error, result) {
+        if (result[1][0]["@enquiryId"] !== 0) {
+          response.status = true;
+          response.message = "Enquiry Submitted.";
+          response.data = null;
+          res.send(JSON.stringify(response));
+        } else {
+          response.status = false;
+          response.message = "Enquiry Submission Fail.";
+          response.data = null;
+          res.send(JSON.stringify(response));
+        }
+      }
+    );
   } catch (ex) {
     console.log(ex);
   }
@@ -18,12 +67,24 @@ router.post("/", async (req, res, next) => {
 
 router.get("/list", async (req, res, next) => {
   try {
+    var response = { status: true, message: "" };
     connection.query("CALL SP_GET_ENQUIRY_LIST()", function (error, result) {
       if (error) {
         console.log(error);
       } else {
-        res.send(JSON.stringify(result[0]));
-        console.log(result[0]);
+        if (result.length === undefined || result[0].length === 0) {
+          response.status = false;
+          response.message = "No Record Found For You.";
+          response.data = null;
+          res.send(JSON.stringify(response));
+        } else {
+          response.status = true;
+          response.message = "Enquiries Found.";
+          response.data = result[0];
+          res.send(JSON.stringify(response));
+        }
+
+        // console.log(result[0]);
       }
     });
   } catch (ex) {
@@ -31,18 +92,33 @@ router.get("/list", async (req, res, next) => {
   }
 });
 
-module.exports = router;
+router.get("/list/:id", async (req, res, next) => {
+  try {
+    var response = { status: true, message: "" };
+    connection.query(
+      "CALL SP_GET_ENQUIRY_LIST_BY_CUSTOMER_ID(?)",
+      [req.params.id],
+      function (error, result) {
+        if (error) {
+          console.log(error);
+        } else {
+          if (result.length === undefined || result[0].length === 0) {
+            response.status = false;
+            response.message = "No Record Found For You.";
+            response.data = null;
+            res.send(JSON.stringify(response));
+          } else {
+            response.status = true;
+            response.message = "Enquiries Found.";
+            response.data = result[0];
+            res.send(JSON.stringify(response));
+          }
+        }
+      }
+    );
+  } catch (ex) {
+    console.log(ex);
+  }
+});
 
-// }
-// {
-//   customerName: 'Aamer Ali Sayyed',
-//   email: 'aamer@gmail.com',
-//   mobile: '9028030984',
-//   address: 'Kat Kat Gate',
-//   numberOfSeats: 1,
-//   modeOfTransport: 3,
-//   locationTo: { value: 3, name: 'Pune' },
-//   locationFrom: { value: 1, name: 'Aurangabad' },
-//   travelingDate: '2021-12-17T18:30:00.000Z',
-//   enquiryDate: '2021-12-11T12:47:50.799Z'
-// }
+module.exports = router;
