@@ -79,25 +79,28 @@ router.post("/", async (req, res, next) => {
 router.get("/list", async (req, res, next) => {
   try {
     var response = { status: true, message: "" };
-    connection.query("CALL SP_GET_ENQUIRY_LIST()", function (error, result) {
-      if (error) {
-        console.log(error);
-      } else {
-        if (result.length === undefined || result[0].length === 0) {
-          response.status = false;
-          response.message = "No Record Found For You.";
-          response.data = null;
-          res.send(JSON.stringify(response));
+    connection.query(
+      "SELECT * FROM tbl_PlaceMaster ORDER BY place_name",
+      function (error, result) {
+        if (error) {
+          console.log(error);
         } else {
-          response.status = true;
-          response.message = "Enquiries Found.";
-          response.data = result[0];
-          res.send(JSON.stringify(response));
-        }
+          if (result.length === undefined || result[0].length === 0) {
+            response.status = false;
+            response.message = "No Record Found For You.";
+            response.data = null;
+            res.send(JSON.stringify(response));
+          } else {
+            response.status = true;
+            response.message = "Enquiries Found.";
+            response.data = result;
+            res.send(JSON.stringify(response));
+          }
 
-        // console.log(result[0]);
+          //   console.log(result);
+        }
       }
-    });
+    );
   } catch (ex) {
     console.log(ex);
   }
